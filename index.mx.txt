@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario La Terraza</title>
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, sans-serif;
+}
+body{
+    background:#1e1e1e;
+    min-height:100vh;
+    color:white;
+}
+header{
+    text-align:center;
+    padding:30px;
+}
+header h1{
+    color:#f4b400;
+    font-size:55px;
+}
+header p{
+    margin-top:10px;
+    color:#ddd;
+}
+.container{
+    width:90%;
+    max-width:1200px;
+    margin:auto;
+    background:white;
+    color:black;
+    padding:25px;
+    border-radius:20px;
+}
+.formulario{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:15px;
+    margin-bottom:20px;
+}
+input, button{
+    padding:12px;
+    border-radius:10px;
+    border:1px solid #ccc;
+    font-size:15px;
+}
+button{
+    background:#f4b400;
+    border:none;
+    font-weight:bold;
+    cursor:pointer;
+}
+button:hover{
+    background:#d89d00;
+}
+.botones{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th{
+    background:#2c3e50;
+    color:white;
+    padding:12px;
+}
+td{
+    padding:12px;
+    text-align:center;
+    border-bottom:1px solid #ddd;
+}
+.rojo{
+    background:#e74c3c;
+    color:white;
+    padding:5px 10px;
+    border-radius:8px;
+}
+.amarillo{
+    background:#f1c40f;
+    color:black;
+    padding:5px 10px;
+    border-radius:8px;
+}
+.verde{
+    background:#2ecc71;
+    color:white;
+    padding:5px 10px;
+    border-radius:8px;
+}
+#historial{
+    display:none;
+}
+footer{
+    text-align:center;
+    padding:20px;
+    color:#aaa;
+}
+</style>
+</head>
+<body>
+<header>
+<h1>LA TERRAZA</h1>
+<p>Sistema Inteligente de Inventario</p>
+</header>
+<div class="container">
+<div class="formulario">
+<input type="text" id="producto" placeholder="Nombre del producto">
+<input type="number" id="cantidad" placeholder="Cantidad">
+<button onclick="agregarEntrada()">
+Agregar Entrada
+</button>
+<button onclick="registrarSalida()">
+Registrar Salida
+</button>
+</div>
+<div class="botones">
+<button onclick="mostrarInventario()">
+Inventario
+</button>
+<button onclick="mostrarHistorial()">
+Historial
+</button>
+<button onclick="descargarExcel()">
+Descargar Excel
+</button>
+</div>
+<!-- INVENTARIO -->
+<div id="inventario">
+<table>
+<thead>
+<tr>
+<th>Producto</th>
+<th>Cantidad</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody id="tablaInventario">
+</tbody>
+</table>
+</div>
+<!-- HISTORIAL -->
+<div id="historial">
+<table>
+<thead>
+<tr>
+<th>Producto</th>
+<th>Movimiento</th>
+<th>Cantidad</th>
+<th>Fecha</th>
+<th>Hora</th>
+</tr>
+</thead>
+<tbody id="tablaHistorial">
+</tbody>
+</table>
+</div>
+</div>
+<footer>
+© 2026 Restaurante La Terraza
+</footer>
+<script>
+let inventario = JSON.parse(localStorage.getItem("inventario")) || {};
+let historial = JSON.parse(localStorage.getItem("historial")) || [];
+actualizarTabla();
+cargarHistorial();
+function guardarDatos(){
+    localStorage.setItem(
+        "inventario",
+        JSON.stringify(inventario)
+    );
+    localStorage.setItem(
+        "historial",
+        JSON.stringify(historial)
+    );
+}
+function actualizarTabla(){
+    let tabla = document.getElementById("tablaInventario");
+    tabla.innerHTML = "";
+    for(let producto in inventario){
+        let cantidad = inventario[producto];
+        let estado = "";
+        let clase = "";
+        if(cantidad <= 5){
+            estado = "Bajo";
+            clase = "rojo";
+        }
+        else if(cantidad <= 15){
+            estado = "Medio";
+            clase = "amarillo";
+        }
+        else{
+            estado = "Alto";
+            clase = "verde";
+        }
+        tabla.innerHTML += `
+        <tr>
+            <td>${producto}</td>
+            <td>${cantidad}</td>
+            <td>
+                <span class="${clase}">
+                    ${estado}
+                </span>
+            </td>
+        </tr>
+        `;
+    }
+    guardarDatos();
+}
+function agregarEntrada(){
+    let producto = document.getElementById("producto").value;
+    let cantidad = parseInt(
+        document.getElementById("cantidad").value
+    );
+    if(producto === "" || isNaN(cantidad)){
+        alert("Completa los campos");
+        return;
+    }
+    if(inventario[producto]){
+        inventario[producto] += cantidad;
+    }
+    else{
+        inventario[producto] = cantidad;
+    }
+    registrarHistorial(
+        producto,
+        "Entrada",
+        cantidad
+    );
+    actualizarTabla();
+    limpiarCampos();
+}
+function registrarSalida(){
+    let producto = document.getElementById("producto").value;
+    let cantidad = parseInt(
+        document.getElementById("cantidad").value
+    );
+    if(producto === "" || isNaN(cantidad)){
+        alert("Completa los campos");
+        return;
+    }
+    if(!inventario[producto]){
+        alert("Producto no existe");
+        return;
+    }
+    if(inventario[producto] < cantidad){
+        alert("No hay suficiente inventario");
+        return;
+    }
+    inventario[producto] -= cantidad;
+    registrarHistorial(
+        producto,
+        "Salida",
+        cantidad
+    );
+    actualizarTabla();
+    limpiarCampos();
+}
+function registrarHistorial(
+    producto,
+    movimiento,
+    cantidad
+){
+    let fechaActual = new Date();
+    let fecha =
+        fechaActual.toLocaleDateString();
+    let hora =
+        fechaActual.toLocaleTimeString();
+    historial.push({
+        producto,
+        movimiento,
+        cantidad,
+        fecha,
+        hora
+    });
+    cargarHistorial();
+    guardarDatos();
+}
+function cargarHistorial(){
+    let tabla =
+        document.getElementById(
+            "tablaHistorial"
+        );
+    tabla.innerHTML = "";
+    historial.forEach(item => {
+        tabla.innerHTML += `
+        <tr>
+            <td>${item.producto}</td>
+            <td>${item.movimiento}</td>
+            <td>${item.cantidad}</td>
+            <td>${item.fecha}</td>
+            <td>${item.hora}</td>
+        </tr>
+        `;
+    });
+}
+function limpiarCampos(){
+    document.getElementById(
+        "producto"
+    ).value = "";
+    document.getElementById(
+        "cantidad"
+    ).value = "";
+}
+function mostrarInventario(){
+    document.getElementById(
+        "inventario"
+    ).style.display = "block";
+    document.getElementById(
+        "historial"
+    ).style.display = "none";
+}
+function mostrarHistorial(){
+    document.getElementById(
+        "inventario"
+    ).style.display = "none";
+    document.getElementById(
+        "historial"
+    ).style.display = "block";
+}
+function descargarExcel(){
+    let contenido =
+    "Producto,Movimiento,Cantidad,Fecha,Hora\n";
+    historial.forEach(item => {
+        contenido +=
+        `${item.producto},${item.movimiento},${item.cantidad},${item.fecha},${item.hora}\n`;
+    });
+    let blob = new Blob(
+        [contenido],
+        {type:"text/csv"}
+    );
+    let enlace =
+        document.createElement("a");
+    enlace.href =
+        URL.createObjectURL(blob);
+    enlace.download =
+        "inventario_la_terraza.csv";
+    enlace.click();
+}
+</script>
+</body>
+</html>
